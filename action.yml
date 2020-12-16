@@ -1,0 +1,54 @@
+name: GitHub action for pipeline microservice in Node.js
+
+input:
+  name:
+    description: 'Name of microservice folder in monorepo'
+    required: true
+
+outputs:
+  build_number: 
+    description: "Build number"
+    value: ${{ steps.build_info.outputs.build_number }}
+  component_version: 
+    description: "Component version"
+    value: ${{ steps.build_info.outputs.component_version }}
+  component_name: 
+    description: "Component name"
+    value: ${{ steps.build_info.outputs.component_name }}
+
+runs:
+  using: "composite"
+  steps: 
+  
+    ############# Prepare #############
+
+    - name: Remove other components
+      run: |
+         ls | grep -v ${{ inputs.name }} | xargs -I{} rm -rf /{} 
+      shell: bash
+
+    - name: Save build number and component version
+      id: build_info
+      run: |
+        echo "##[set-output name=build_number;]$GITHUB_RUN_NUMBER"
+        echo "##[set-output name=component_version;]$(jq -r '.version' ${{ inputs.name }}/component.json)"
+        echo "##[set-output name=component_name;]$(jq -r '.name' ${{ inputs.name }}/component.json)"
+      shell: bash
+
+    ############# Test #############
+    
+    - name: Test the component
+      run: |
+        cd ${{ inputs.name }}
+        ./test.ps1
+      shell: bash
+
+    ############# Clear #############
+
+    # - name: Clean temporary build artifacts
+    #   if: ${{ always() }}
+    #   run: |
+    #    cd ${{ inputs.name }}
+    #    ./clean.ps1
+    #   shell: bash
+    
